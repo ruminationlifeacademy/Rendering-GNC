@@ -146,6 +146,8 @@
       <input type="text" id="f_name" placeholder="Full name">
       <label>Roll No.</label>
       <input type="text" id="f_roll" placeholder="Roll number">
+      <label>Date of worksheet submission</label>
+      <input type="text" id="f_submissionDate" placeholder="dd/mm/yy" maxlength="8" oninput="formatDateInput(this)">
       <label>Name of the College</label>
       <input type="text" id="f_college" placeholder="College name">
       <label>Programme / Department</label>
@@ -209,6 +211,26 @@ function showStep(id) {
 }
 function setProgress(pct) { document.getElementById('progressFill').style.width = pct + '%'; }
 
+// Auto-formats the submission date input as dd/mm/yy while the user types.
+function formatDateInput(el) {
+  let digits = el.value.replace(/\D/g, '').slice(0, 6);
+  let out = digits;
+  if (digits.length > 4) out = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+  else if (digits.length > 2) out = digits.slice(0,2) + '/' + digits.slice(2);
+  el.value = out;
+}
+
+// Validates a dd/mm/yy string is a real calendar date.
+function isValidDate(str) {
+  const m = String(str).match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
+  if (!m) return false;
+  const dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), yy = parseInt(m[3], 10);
+  if (mm < 1 || mm > 12 || dd < 1) return false;
+  const fullYear = 2000 + yy;
+  const daysInMonth = new Date(fullYear, mm, 0).getDate();
+  return dd <= daysInMonth;
+}
+
 function loadActiveDay() {
   fetch(SCRIPT_URL + "?action=activeDay")
     .then(r => r.json())
@@ -239,10 +261,20 @@ function loadActiveDay() {
 }
 
 function beginQuestions() {
-  const fields = ['f_name', 'f_roll', 'f_college', 'f_programme', 'f_section', 'f_stream'];
+  const fields = ['f_name', 'f_roll', 'f_submissionDate', 'f_college', 'f_programme', 'f_section', 'f_stream'];
   const missing = fields.some(id => !document.getElementById(id).value.trim());
   const err = document.getElementById('detailsError');
-  if (missing) { err.style.display = 'block'; return; }
+  if (missing) {
+    err.textContent = 'Please fill in every field before continuing.';
+    err.style.display = 'block';
+    return;
+  }
+  const dateVal = document.getElementById('f_submissionDate').value.trim();
+  if (!isValidDate(dateVal)) {
+    err.textContent = 'Please enter a valid submission date in dd/mm/yy format.';
+    err.style.display = 'block';
+    return;
+  }
   err.style.display = 'none';
 
   const roll = document.getElementById('f_roll').value.trim();
@@ -332,6 +364,7 @@ function submit() {
     timestamp: new Date().toISOString(),
     name: document.getElementById('f_name').value.trim(),
     rollNo: document.getElementById('f_roll').value.trim(),
+    submissionDate: document.getElementById('f_submissionDate').value.trim(),
     college: document.getElementById('f_college').value.trim(),
     programme: document.getElementById('f_programme').value.trim(),
     section: document.getElementById('f_section').value.trim(),
